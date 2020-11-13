@@ -13,7 +13,7 @@ import (
 func actualtime(t time.Time) float64 {
 	fmt.Println(t)
 
-	// месяц день год поменять на день месяц год по заданию
+	// !!! месяц день год поменять на день месяц год по заданию
 	fdt := t.Format("010206.150405")
 	fmt.Println(fdt)
 	// Перевод строки во float64
@@ -30,8 +30,8 @@ func (h *Handler) getNow(c *gin.Context) {
 }
 
 func stringTime(t time.Time) string {
+	// !!! русифицировать месяца
 	// 20 октября 2018 года,19 часов,35 минут, 21 секунда.
-	// русифицировать месяца
 	dateStr := fmt.Sprintf(
 		"%v %v %v года, %v часов %v минут %v секунда",
 		t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute(), t.Second(),
@@ -51,30 +51,8 @@ func (h *Handler) getString(c *gin.Context) {
 	c.JSON(200, gin.H{"str": date})
 }
 
-// func (h *Handler) getAdd(c *gin.Context) {
-// 	// req*  = request from handler
-// 	reqTime := c.DefaultQuery("time", "010206.150405")
-// 	reqDelta := c.DefaultQuery("delta", "010206.152255")
-
-// 	timeT, err := time.Parse("010206.150405", reqTime)
-// 	deltaT, err := time.Parse("010206.150405", reqDelta)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	// Разница между датами
-// 	firstTime := timeT.Unix()
-// 	secondTime := deltaT.Unix()
-// 	deltaMinute := (secondTime - firstTime) / 60
-// 	fmt.Println(deltaMinute)
-
-// 	newT := timeT.Add(time.Minute * time.Duration(deltaMinute))
-// 	fmt.Printf("Adding 1 hour\n: %s\n", newT)
-
-// 	c.JSON(200, gin.H{"time": deltaMinute})
-// }
-
 func (h *Handler) getAdd(c *gin.Context) {
+	// !!! парсинги вывести в отдельную функцию ->float64
 	// req*  = request from handler
 	reqTime := c.DefaultQuery("time", "010206.150405")
 	reqDelta := c.DefaultQuery("delta", "010206.000000")
@@ -85,12 +63,30 @@ func (h *Handler) getAdd(c *gin.Context) {
 	fmt.Print(startT)
 
 	data := strings.Split(reqDelta, ".")
+
+	// Parse date from string
 	boxdate := data[0]
+	boxDatestr := strings.Split(boxdate, "")
+
+	btMonth := boxDatestr[0] + boxDatestr[1]
+	btDay := boxDatestr[2] + boxDatestr[3]
+	btYear := boxDatestr[4] + boxDatestr[5]
+
+	monthInt, err := strconv.Atoi(btMonth)
+	dayInt, err := strconv.Atoi(btDay)
+	yearInt, err := strconv.Atoi(btYear)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
+
+	dateT := [3]int{monthInt, dayInt, yearInt}
+	endDate := startT.AddDate(dateT[0], dateT[1], dateT[2])
 
 	// Parse time from string
 	boxtime := data[1]
 	boxTimestr := strings.Split(boxtime, "")
-	// t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute(), t.Second()
+
 	btHour := boxTimestr[0] + boxTimestr[1]
 	btMinute := boxTimestr[2] + boxTimestr[3]
 	btSecond := boxTimestr[4] + boxTimestr[5]
@@ -99,20 +95,16 @@ func (h *Handler) getAdd(c *gin.Context) {
 	minuteInt, err := strconv.Atoi(btMinute)
 	secondInt, err := strconv.Atoi(btSecond)
 	if err != nil {
-		// handle error
 		fmt.Println(err)
 		os.Exit(2)
 	}
 	timeT := [3]int{hourInt, minuteInt, secondInt}
 
-	// var x0 time.Duration
-	// if fdt, err := strconv.ParseInt(btHour,0); err == nil {
-	// 	x = fdt
-	// }
-
 	endTime := startT.Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
 
-	c.JSON(200, gin.H{"full": timeT, "boxdate": boxdate, "startT": startT, "endTime": endTime})
+	endDateAndTime := startT.AddDate(dateT[0], dateT[1], dateT[2]).Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
+	formatDateTime := actualtime(endDateAndTime)
+	c.JSON(200, gin.H{"time": formatDateTime, "endDate": endDate, "endTime": endTime})
 }
 
 func (h *Handler) postCorrect(c *gin.Context) {
