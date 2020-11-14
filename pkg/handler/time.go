@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -10,18 +11,77 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func actualtime(t time.Time) float64 {
-	fmt.Println(t)
+func convertStrFloat64(data string) float64 {
 
-	// !!! месяц день год поменять на день месяц год по заданию
-	fdt := t.Format("010206.150405")
-	fmt.Println(fdt)
-	// Перевод строки во float64
 	var x float64 = 0
-	if fdt, err := strconv.ParseFloat(fdt, 64); err == nil {
-		x = fdt
+	if data, err := strconv.ParseFloat(data, 64); err == nil {
+		x = data
 	}
 	return x
+}
+
+func parseStringData(data []string, startT time.Time) float64 {
+	// Parse date from string
+	boxdate := data[0]
+	boxDatestr := strings.Split(boxdate, "")
+
+	btMonth := boxDatestr[0] + boxDatestr[1]
+	btDay := boxDatestr[2] + boxDatestr[3]
+	btYear := boxDatestr[4] + boxDatestr[5]
+
+	monthInt, err := strconv.Atoi(btMonth)
+	dayInt, err := strconv.Atoi(btDay)
+	yearInt, err := strconv.Atoi(btYear)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
+
+	dateT := [3]int{monthInt, dayInt, yearInt}
+	// endDate := startT.AddDate(dateT[0], dateT[1], dateT[2])
+
+	// Parse time from string
+	boxtime := data[1]
+	boxTimestr := strings.Split(boxtime, "")
+
+	btHour := boxTimestr[0] + boxTimestr[1]
+	btMinute := boxTimestr[2] + boxTimestr[3]
+	btSecond := boxTimestr[4] + boxTimestr[5]
+
+	hourInt, err := strconv.Atoi(btHour)
+	minuteInt, err := strconv.Atoi(btMinute)
+	secondInt, err := strconv.Atoi(btSecond)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
+	timeT := [3]int{hourInt, minuteInt, secondInt}
+
+	// endTime := startT.Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
+
+	endDateAndTime := startT.AddDate(dateT[0], dateT[1], dateT[2]).Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
+	formatDateTime := endDateAndTime.Format("010206.150405")
+
+	// Перевод строки во float64
+	var x float64 = 0
+	if formatDateTime, err := strconv.ParseFloat(formatDateTime, 64); err == nil {
+		x = formatDateTime
+	}
+	return x
+}
+
+func actualtime(t time.Time) float64 {
+	// !!! месяц день год поменять на день месяц год по заданию
+	fdt := t.Format("010206.150405")
+	startT, err := time.Parse("010206.150405", fdt)
+	delta := string(deltaFromFile())
+	data := strings.Split(delta, ".")
+	if err != nil {
+		panic(err)
+	}
+	endTime := parseStringData(data, startT)
+	fmt.Print(endTime)
+	return endTime
 }
 
 func (h *Handler) getNow(c *gin.Context) {
@@ -52,7 +112,6 @@ func (h *Handler) getString(c *gin.Context) {
 }
 
 func (h *Handler) getAdd(c *gin.Context) {
-	// !!! парсинги вывести в отдельную функцию ->float64
 	// req*  = request from handler
 	reqTime := c.DefaultQuery("time", "010206.150405")
 	reqDelta := c.DefaultQuery("delta", "010206.000000")
@@ -63,50 +122,31 @@ func (h *Handler) getAdd(c *gin.Context) {
 	fmt.Print(startT)
 
 	data := strings.Split(reqDelta, ".")
+	formatDateTime := parseStringData(data, startT)
 
-	// Parse date from string
-	boxdate := data[0]
-	boxDatestr := strings.Split(boxdate, "")
+	c.JSON(200, gin.H{"time": formatDateTime})
+}
 
-	btMonth := boxDatestr[0] + boxDatestr[1]
-	btDay := boxDatestr[2] + boxDatestr[3]
-	btYear := boxDatestr[4] + boxDatestr[5]
-
-	monthInt, err := strconv.Atoi(btMonth)
-	dayInt, err := strconv.Atoi(btDay)
-	yearInt, err := strconv.Atoi(btYear)
+func deltaToFile(t string) {
+	// Каждый раз перезаписывает файл
+	mydata := []byte(t)
+	err := ioutil.WriteFile("pkg/handler/temp/file.txt", mydata, 0777)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(2)
 	}
+}
 
-	dateT := [3]int{monthInt, dayInt, yearInt}
-	endDate := startT.AddDate(dateT[0], dateT[1], dateT[2])
-
-	// Parse time from string
-	boxtime := data[1]
-	boxTimestr := strings.Split(boxtime, "")
-
-	btHour := boxTimestr[0] + boxTimestr[1]
-	btMinute := boxTimestr[2] + boxTimestr[3]
-	btSecond := boxTimestr[4] + boxTimestr[5]
-
-	hourInt, err := strconv.Atoi(btHour)
-	minuteInt, err := strconv.Atoi(btMinute)
-	secondInt, err := strconv.Atoi(btSecond)
+func deltaFromFile() string {
+	data, err := ioutil.ReadFile("pkg/handler/temp/file.txt")
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(2)
 	}
-	timeT := [3]int{hourInt, minuteInt, secondInt}
-
-	endTime := startT.Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
-
-	endDateAndTime := startT.AddDate(dateT[0], dateT[1], dateT[2]).Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
-	formatDateTime := actualtime(endDateAndTime)
-	c.JSON(200, gin.H{"time": formatDateTime, "endDate": endDate, "endTime": endTime})
+	fmt.Print(string(data))
+	return string(data)
 }
 
 func (h *Handler) postCorrect(c *gin.Context) {
-
+	r := c.DefaultQuery("time", "Guest")
+	deltaToFile(r)
+	c.JSON(200, gin.H{"time": deltaFromFile()})
 }
