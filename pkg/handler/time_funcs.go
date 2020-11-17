@@ -7,12 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func convertStrFloat64(data string) float64 {
-
 	var x float64 = 0
 	if data, err := strconv.ParseFloat(data, 64); err == nil {
 		x = data
@@ -57,16 +54,10 @@ func parseStringData(data []string, startT time.Time) float64 {
 	}
 	timeT := [3]int{hourInt, minuteInt, secondInt}
 
-	// endTime := startT.Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
-
 	endDateAndTime := startT.AddDate(dateT[0], dateT[1], dateT[2]).Add(time.Hour*time.Duration(timeT[0]) + time.Minute*time.Duration(timeT[1]) + time.Second*time.Duration(timeT[2]))
 	formatDateTime := endDateAndTime.Format("010206.150405")
 
-	// Перевод строки во float64
-	var x float64 = 0
-	if formatDateTime, err := strconv.ParseFloat(formatDateTime, 64); err == nil {
-		x = formatDateTime
-	}
+	x := convertStrFloat64(formatDateTime)
 	return x
 }
 
@@ -84,11 +75,6 @@ func actualtime(t time.Time) float64 {
 	return endTime
 }
 
-func (h *Handler) getNow(c *gin.Context) {
-	t := time.Now()
-	c.JSON(200, gin.H{"time": actualtime(t)})
-}
-
 func stringTime(t time.Time) string {
 	// !!! русифицировать месяца
 	// 20 октября 2018 года,19 часов,35 минут, 21 секунда.
@@ -97,34 +83,6 @@ func stringTime(t time.Time) string {
 		t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute(), t.Second(),
 	)
 	return string(dateStr)
-}
-
-func (h *Handler) getString(c *gin.Context) {
-	r := c.DefaultQuery("time", "Guest")
-	tr, err := time.Parse("010206.150405", r)
-
-	if err != nil {
-		panic(err)
-	}
-
-	date := stringTime(tr)
-	c.JSON(200, gin.H{"str": date})
-}
-
-func (h *Handler) getAdd(c *gin.Context) {
-	// req*  = request from handler
-	reqTime := c.DefaultQuery("time", "010206.150405")
-	reqDelta := c.DefaultQuery("delta", "010206.000000")
-	startT, err := time.Parse("010206.150405", reqTime)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Print(startT)
-
-	data := strings.Split(reqDelta, ".")
-	formatDateTime := parseStringData(data, startT)
-
-	c.JSON(200, gin.H{"time": formatDateTime})
 }
 
 func deltaToFile(t string) {
@@ -143,10 +101,4 @@ func deltaFromFile() string {
 	}
 	fmt.Print(string(data))
 	return string(data)
-}
-
-func (h *Handler) postCorrect(c *gin.Context) {
-	r := c.DefaultQuery("time", "Guest")
-	deltaToFile(r)
-	c.JSON(200, gin.H{"time": deltaFromFile()})
 }
