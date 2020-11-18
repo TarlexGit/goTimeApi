@@ -18,7 +18,7 @@ api commands (1-url, 2-params (key - value):
 
 1 http://localhost:8000/time/add
 2 time - 111420.124046
-  delta - delta
+  delta - 000000.010000 (Добавляет час)
   
 1 http://localhost:8000/time/correct
-2 time - 010101.010101
+2 time - 010101.010101 (+ 1 год месяц день час минута секунда) 
