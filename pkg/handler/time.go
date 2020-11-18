@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -119,7 +120,7 @@ func (h *Handler) getAdd(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print(startT)
+	fmt.Println(startT)
 
 	data := strings.Split(reqDelta, ".")
 	formatDateTime := parseStringData(data, startT)
@@ -129,7 +130,7 @@ func (h *Handler) getAdd(c *gin.Context) {
 
 func deltaToFile(t string) {
 	// Каждый раз перезаписывает файл
-	mydata := []byte(t)
+	mydata := []byte(string(t))
 	err := ioutil.WriteFile("pkg/handler/temp/file.txt", mydata, 0777)
 	if err != nil {
 		fmt.Println(err)
@@ -141,12 +142,24 @@ func deltaFromFile() string {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Print(string(data))
+	fmt.Println(string(data))
 	return string(data)
 }
 
 func (h *Handler) postCorrect(c *gin.Context) {
-	r := c.DefaultQuery("time", "Guest")
-	deltaToFile(r)
-	c.JSON(200, gin.H{"time": deltaFromFile()})
+	r := c.DefaultQuery("time", "000000.000000")
+
+	matched, err := regexp.MatchString(`^[0-9][0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]$`, r)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if matched != true {
+		fmt.Println(err, matched)
+		errorText := "Ошибка формата ввода. Пример - 000000.010000"
+		c.JSON(200, gin.H{"error": errorText})
+	} else {
+		deltaToFile(r)
+		c.JSON(200, gin.H{"time": deltaFromFile()})
+	}
 }
